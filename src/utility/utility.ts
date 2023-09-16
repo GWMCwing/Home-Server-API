@@ -1,16 +1,26 @@
 import type { Request } from 'express';
-import { ErrorOrResult } from '../types/utility';
+import { type ObjectSchema, type Output, parse } from 'valibot';
+import { ConstraintRequestSchema } from '../types/utility';
 
-function requireBody<R extends Record<T, any>, T extends keyof R = keyof R>(req: Request, requires: T[]): ErrorOrResult<{ [K in T]: R[K] }, 'body'> {
-  const body = req.body;
-  const requiredBody: Record<T, any> = {} as any;
-  for (const require of requires) {
-    if (body[require] === undefined) {
-      return { error: true };
+function requireBody<T, S extends ObjectSchema<any, any>>(
+  targetType: T,
+  req: Request,
+  schema: S
+):
+  | {
+      success: true;
+      result: ConstraintRequestSchema<S, T>;
     }
-    requiredBody[require] = body[require];
+  | {
+      success: false;
+      result: unknown;
+    } {
+  try {
+    parse(schema, req.body);
+  } catch (error) {
+    return { success: false, result: error };
   }
-  return { body: requiredBody };
+  return { success: true, result: req.body as ConstraintRequestSchema<typeof schema, T> };
 }
 
 export { requireBody };

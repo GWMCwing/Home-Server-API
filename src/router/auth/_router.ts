@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { localOnly } from '../../middleware/localOnly';
 import rateLimit from 'express-rate-limit';
-import { requestVerificationEmail } from './requestVerificationEmail';
+import { createUser } from './createUser';
+import { requestNonce } from './getNonce';
 
 const maxRequests = 10;
 const limiter = rateLimit({
@@ -14,7 +15,7 @@ const limiter = rateLimit({
   //
   skip: (req: Request, res: Response) => {
     // allow local requests
-    const remote = req.socket.remoteAddress;
+    const remote = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const isLocal = remote === '::1' || remote === '::ffff:127.0.0.1';
     return isLocal;
   },
@@ -24,12 +25,13 @@ const router = Router({
   caseSensitive: true,
 });
 //
-router.post('/requestVerificationEmail', localOnly, requestVerificationEmail);
+router.post('/createUser', localOnly, createUser);
 //
 router.get('/verifyEmail', limiter, (req, res, next) => {
   // TODO:
   res.status(500);
   next();
 });
+router.get('/nonce/get', localOnly, requestNonce);
 
 export { router as authRouter };
